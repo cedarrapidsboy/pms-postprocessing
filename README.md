@@ -53,7 +53,7 @@ From eyeball analysis of the resulting files, a target average video bitrate of 
 
 *PIXELS_PER_SECOND* * **BITRATE_CONSTANT** = *AVERAGE_BITRATE*
 
-By default, the **BITRATE_CONSTANT** is 0.000072 Kbps, or in other words, each pixel is alloted 0.000072 Kbps of the bitrate. The following table illustrates the calculated bitrates for standard ATSC video formats:
+By default, the **BITRATE_CONSTANT** is 0.000072 Kb, or in other words, each pixel is alloted 0.000072 Kb per second. The following table illustrates the calculated bitrates for standard ATSC video formats:
 
 | Width | Height | FPS | Pixels per second | Bitrate (Kbps)
 ---:|---:|---:|---:|---:
