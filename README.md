@@ -28,7 +28,7 @@ No environment variables are required for operation. However, some encoding defa
 
 ## Usage
 1. Copy to your PMS scripts folder (`/config/Library/Application Support/Plex Media Server/Scripts/`)
-..* Make sure it is executable (`chmod +x transcode_internal.sh`)
+    * Make sure it is executable (`chmod +x transcode_internal.sh`)
 2. Edit your PMS DVR settings and specify `transcode_internal.sh` as the postprocessing script name
 
 ## Behaviour
@@ -36,10 +36,10 @@ When the PMS DVR finishes a recording it will call this script with the recently
 1. Attempt to detect if the recorded file is interlaced. If so, deinterlacing will be used.
 2. Attempt to read video dimensions and frame rate from recorded file.
 3. Attempt to transcode the recorded file using NVENC acceleration.
-..* Upon failure, attempt to transcode using the libx264 software encoder.
+    * Upon failure, attempt to transcode using the libx264 software encoder.
 4. Cleanup temporary files.
-..* (Success) Create new file with configured file format (above). Delete original recorded file (e.g., recording.ts).
-..* (Failure) Remove any temporary transcoded file. Log an error in a log in the `TEMPFOLDER`.
+    * (Success) Create new file with configured file format (above). Delete original recorded file (e.g., recording.ts).
+    * (Failure) Remove any temporary transcoded file. Log an error in a log in the `TEMPFOLDER`.
 5. PMS adds whichever file remains to the library.
 
 ## Regarding Bitrate...
