@@ -26,12 +26,12 @@ No environment variables are required for operation. However, some encoding defa
 * `TMPFOLDER` - Temporary location for in-process transcoding (default: `/tmp`)
 * `PPFORMAT` - Output file format. Either `mp4` or `mkv`. `mp4` supports FFMPEG *faststart* flag. (default: `mp4`)
 
-## Usage
+### Usage
 1. Copy to your PMS scripts folder (`/config/Library/Application Support/Plex Media Server/Scripts/`)
     * Make sure it is executable (`chmod +x transcode_internal.sh`)
 2. Edit your PMS DVR settings and specify `transcode_internal.sh` as the postprocessing script name
 
-## Behaviour
+### Behaviour
 When the PMS DVR finishes a recording it will call this script with the recently recorded filename as the only parameter. This script will attempt to transcode the recorded file into the configured file format (see above).
 1. Attempt to detect if the recorded file is interlaced. If so, deinterlacing will be used.
 2. Attempt to read video dimensions and frame rate from recorded file.
@@ -42,7 +42,7 @@ When the PMS DVR finishes a recording it will call this script with the recently
     * (Failure) Remove any temporary transcoded file. Log an error in a log in the `TEMPFOLDER`.
 5. PMS adds whichever file remains to the library.
 
-## Regarding Bitrate...
+### Regarding Bitrate...
 Beauty is in the eye of the beholder, thus the appropriate bitrate for video encoding is very subjective. Goals with the default settings in this script are as follows:
 * Lower bitrate than the source MPEG2 file to conserve storage space (i.e., smaller file size)
 * Not so low that the video looks *bad* <- see... *that's* subjective
