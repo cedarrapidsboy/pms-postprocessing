@@ -65,14 +65,15 @@ check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so
 ###############################################################################
 DIM="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "$FILENAME" 2>&1 \
    | grep "Stream #0:0" \
-   | perl -lane 'print "$1 $2" if /, (\d{3,})x(\d{3,})/')"
-HEIGHT=$(echo ${DIM} | perl -lane 'print $F[1]')
-WIDTH=$(echo ${DIM} | perl -lane 'print $F[0]')
+   | perl -lane 'print "$1 $2 $3" if /Video: (\w+) .+, (\d{3,})x(\d{3,})/')"
+ISMPEG2=$(echo ${DIM} | perl -lane 'print "true" if $F[0] eq "mpeg2video"')
+HEIGHT=$(echo ${DIM} | perl -lane 'print $F[2]')
+WIDTH=$(echo ${DIM} | perl -lane 'print $F[1]')
 FPS="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "$FILENAME" 2>&1 \
    | grep "Stream #0:0" \
    | perl -lane 'print $1 if /, (\d+(.\d+)*) fps/')"
-if [[ -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
-   check_errs 400 "Unable to determine input video dimensions."
+if [[ -z $ISMPEG2 || -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
+   check_errs 400 "Unable to determine input video dimensions or video codec not MPEG2."
 fi
 
 ###############################################################################
