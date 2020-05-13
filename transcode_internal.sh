@@ -21,7 +21,8 @@
 : "${PPSRATE:="0.000072"}" # WARNING: DO NOT CHANGE - USE VBRMULT INSTEAD
 : "${VBRMULT:="1.0"}"      # Adjusts average video bitrate ("2.0" == 2X)
 : "${TMPFOLDER:="/tmp"}"   # In-process transcoded file, transcode logs
-: "${PPFORMAT:="mp4"}"       # Output format <mkv|mp4>
+: "${PPFORMAT:="mp4"}"     # Output format <mkv|mp4>
+: "${ONLYMPEG2:="false"}"  # Only transcode mpeg2video sources
 
 ###############################################################################
 # INITIALIZATION
@@ -72,8 +73,14 @@ WIDTH=$(echo ${DIM} | perl -lane 'print $F[1]')
 FPS="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "$FILENAME" 2>&1 \
    | grep "Stream #0:0" \
    | perl -lane 'print $1 if /, (\d+(.\d+)*) fps/')"
-if [[ -z $ISMPEG2 || -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
-   check_errs 400 "Unable to determine input video dimensions or video codec not MPEG2."
+
+if [[ -z $ISMPEG2 && $ONLYMPEG2 == "true" ]]; then
+   # Input video is MPEG2 and the env variable is set to only encode MPEG2
+   check_errs 400 "Source video codec is not MPEG2 and ONLYMPEG2 is defined."
+fi
+
+if [[ -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
+   check_errs 400 "Unable to determine input video dimensions."
 fi
 
 ###############################################################################

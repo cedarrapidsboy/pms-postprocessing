@@ -25,6 +25,7 @@ No environment variables are required for operation. However, some encoding defa
 * `VBRMULT` - Average video bitrate multiplier. Setting to 2.0 will double the average bitrate. 0.5 will cut the bitrate in half.(default: 1.0)
 * `TMPFOLDER` - Temporary location for in-process transcoding (default: `/tmp`)
 * `PPFORMAT` - Output file format. Either `mp4` or `mkv`. `mp4` supports FFMPEG *faststart* flag. (default: `mp4`)
+* `ONLYMPEG2` - Set to 'true' to limit transcoding to 'mpeg2video' source content. (default: `false`)
 
 ### Usage
 1. Copy to your PMS scripts folder (`/config/Library/Application Support/Plex Media Server/Scripts/`)
