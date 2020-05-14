@@ -42,10 +42,25 @@ TEMPFILENAME="$(mktemp ${TMPFOLDER}/transcode.XXXXXXXX.${PPFORMAT})"  # Temporar
 check_errs()
 {
    if [ "${1}" -ne "0" ]; then
-      echo "$(date +"%Y%m%d-%H%M%S") ERROR: ${1} : ${2}" | tee -a $LOGFILE
+      echo "$(date +"%Y%m%d-%H%M%S") ERROR: ${1} : ${2}" \
+	     | tee -a $LOGFILE
 	  rm "${TEMPFILENAME}"
       exit ${1}
    fi
+}
+
+###############################################################################
+# FUNCTION do_nothing
+# *****************************************************************************
+# Echo a message and abandon the script. Remove temp file.
+# Kills the script.
+###############################################################################
+do_nothing()
+{
+   echo "$(date +"%Y%m%d-%H%M%S") WARNING: Exiting script : ${1}" \
+      | tee -a $LOGFILE
+   rm "${TEMPFILENAME}"
+   exit 0
 }
 
 ###############################################################################
@@ -76,7 +91,7 @@ FPS="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "$FILENAME" 2>&1 \
 
 if [[ -z $ISMPEG2 && $ONLYMPEG2 == "true" ]]; then
    # Input video is MPEG2 and the env variable is set to only encode MPEG2
-   check_errs 400 "Source video codec is not MPEG2 and ONLYMPEG2 is defined."
+   do_nothing "Source video codec is not MPEG2 and ONLYMPEG2 is defined."
 fi
 
 if [[ -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
