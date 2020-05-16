@@ -8,4 +8,4 @@ May 15 20:32:53 Plex01 Plex Media Server[1542]: 20200515-203253 ERROR: 1 : Error
 ```
 ## v2 - Comskip chapter support
 * **Feature** - Chapters can now be added to the video to reflect comskip-detected commercials.
-* **Refactor** - Script now maintains its own MKV working file to isolate excessive changes to the source. Results in several remuxing steps -- unfortunately increases IO utilization.
+* **Refactor** - Script now maintains its own MKV working file to isolate changes to the source. Results in several remuxing steps -- unfortunately increases IO utilization.
