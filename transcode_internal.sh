@@ -23,7 +23,7 @@
 : "${AACRATE:="192"}"      # Kb/s for AAC audio (stereo DPLII downmix)
 : "${PPSRATE:="0.000072"}" # WARNING: DO NOT CHANGE - USE VBRMULT INSTEAD
 : "${VBRMULT:="1.0"}"      # Adjusts average video bitrate ("2.0" == 2X)
-: "${TMPFOLDER:="/tmp"}"   # In-process transcoded file, transcode logs
+: "${TMPFOLDER:="/tmp"}"   # In-process transcoded file
 : "${PPFORMAT:="mp4"}"     # Transcode output format <mkv|mp4> (mkv will be
                            #    forced for COMCHAP-only runs)
 : "${ONLYMPEG2:="false"}"  # Only transcode mpeg2video sources
@@ -32,7 +32,7 @@
 # INITIALIZATION
 ###############################################################################
 ulimit -c 0                # Disable core dumps
-LOGFILE="$TMPFOLDER/transcode.$(date +"%Y%m%d").log" # Create a unique log file.
+LOGFILE="/tmp/transcode.$(date +"%Y%m%d").log" # Create a unique log file.
 touch "${LOGFILE}"         # Create the log file
 FILENAME="${1}" 	       # %FILE% - Filename of original file
 WORKINGFILE="$(mktemp ${TMPFOLDER}/working.XXXXXXXX.mkv)"
@@ -219,7 +219,6 @@ fi
 ###############################################################################
 # REMUX the working file into the desired format
 ###############################################################################
-ERRCODE=0
 if [[ "$(stat -c%s "${WORKINGFILE}")" -ne "${WORKSIZE}" ]]; then
    TEMPFILENAME="$(mktemp ${TMPFOLDER}/transcode.XXXXXXXX.${PPFORMAT})"  # Temporary File Name for transcoding
    # remux the working file into the desired container -- chance to fail w/ mp4
@@ -232,8 +231,11 @@ if [[ "$(stat -c%s "${WORKINGFILE}")" -ne "${WORKSIZE}" ]]; then
       echo "$(date +"%Y%m%d-%H%M%S") ERROR: ${ERRCODE} : Unable to remux working file." \
         | tee -a "${LOGFILE}"
    else
-      mv -f "${TEMPFILENAME}" "${FILENAME%.*} - (transcoded).${PPFORMAT}"
-	  rm -f "${FILENAME}"
+      NEWFILENAME="${FILENAME%.*}.${PPFORMAT}"
+      mv -f "${TEMPFILENAME}" "${NEWFILENAME}"
+	  if [[ "${FILENAME}" != "${NEWFILENAME}" ]]; then
+	     rm -f "${FILENAME}"
+      fi
    fi
    rm -f "${TEMPFILENAME}"
 else
@@ -241,7 +243,7 @@ else
       | tee -a "${LOGFILE}"
 fi
 rm -f "${WORKINGFILE}"
-exit $ERRCODE
+exit 0
 ###############################################################################
 # SCRIPT DONE.
 ###############################################################################
