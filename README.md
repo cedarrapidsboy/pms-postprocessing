@@ -51,6 +51,8 @@ When the PMS DVR finishes a recording it will call this script with the recently
 3. Merge the timestamp list into the source file as chapter markers.
 4. Cleanup temporary files.
 
+**NOTE**: Chapter thumbnails may not be generated until the daily scheduled task is run, even on servers set to update thumbnails on library update.
+
 ### Regarding Bitrate...
 Beauty is in the eye of the beholder, thus the appropriate bitrate for video encoding is very subjective. Goals with the default settings in this script are as follows:
 * Lower bitrate than the source MPEG2 file to conserve storage space (i.e., smaller file size)
