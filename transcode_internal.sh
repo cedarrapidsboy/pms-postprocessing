@@ -111,13 +111,15 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		# Analyze input video and grab the FFMPEG deinterlace string (or "")
 		# *****************************************************************************
 		# Runtime: Just a few seconds (1000 frames analyzed)
-		# DEINT = "" (progressive) or "-vf yadif=0:0:0" or "-vf yadif=0:1:0"
+		# DEINT      = "" (progressive) or "-vf yadif=0:0:0" or "-vf yadif=0:1:0"
+		# DEINT_CUDA = <same as DEINT with string substitution to use yadif_cuda> 
 		###############################################################################
 		DEINT="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "${WORKINGFILE}" \
 		-filter:v idet -frames:v 1000 -an -f h264 -y /dev/null 2>&1 \
 		| grep "Multi frame detection:" \
 		| perl -lane 'if (/TFF:\s+(\d+)\s+BFF:\s+(\d+)\s+Progressive:\s+(\d+)/){print "-vf yadif=0:0:0" if ($1>$2 && $1>$3);print "-vf yadif=0:1:0" if ($2>$1 && $2>$3);print "" if ($3>$1 && $3>$2);}')"
-		
+		HWYADIF="hwupload_cuda,yadif_cuda"
+		DEINT_CUDA="${DEINT/yadif/$HWYADIF}"		
 		###############################################################################
 		# Calculate average bitrate based on frame size and frame rate
 		###############################################################################
@@ -148,7 +150,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		-hwaccel nvdec -i "${WORKINGFILE}" \
 		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
-		-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT} \
+		-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT_CUDA} \
 		-c:a aac -ac 2 -b:a ${AACRATE}k -filter:a aresample=matrix_encoding=dplii \
 		"${TEMPFILENAME}"
 		ERRCODE=$?
