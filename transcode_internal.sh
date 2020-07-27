@@ -86,7 +86,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
    ###############################################################################
    DIM="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "${WORKINGFILE}" 2>&1 \
 		| grep "Stream #0:0" \
-		| perl -lane 'print "$1 $2 $3" if /Video: (\w+) .+, (\d{3,})x(\d{3,})/')"
+		| perl -lane 'print "$1 $2 $3" if /Video: (\w+).*, (\d{3,})x(\d{3,})/')"
    ISMPEG2=$(echo ${DIM} | perl -lane 'print $F[0] if $F[0] eq "mpeg2video"')
    HEIGHT=$(echo ${DIM} | perl -lane 'print $F[2]')
    WIDTH=$(echo ${DIM} | perl -lane 'print $F[1]')
@@ -96,13 +96,13 @@ if [[ "${TRANSCODE}" == "true" ]]; then
    ALLOK="true"
    if [[ -z $ISMPEG2 && "${ONLYMPEG2}" == "true" ]]; then
 		# Input video is not MPEG2 and the env variable is set to only encode MPEG2
-		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Trasncode skipped. Source video codec is not MPEG2 and ONLYMPEG2 is defined." \
+		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcode skipped. Source video codec is not MPEG2 and ONLYMPEG2 is defined." \
 		 | tee -a "${LOGFILE}"
 		ALLOK="false"
    fi
 
    if [[ -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
-	 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] ERROR: transcode_internal.sh : Trasncode canceled. Unable to determine input video dimensions." \
+	 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] ERROR: transcode_internal.sh : Transcode canceled. Unable to determine input video dimensions." \
 		 | tee -a "${LOGFILE}"
 		ALLOK="false"
    fi
