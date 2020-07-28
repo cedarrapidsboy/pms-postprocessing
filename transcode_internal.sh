@@ -17,6 +17,10 @@
 ###############################################################################
 # CONSTANTS
 ###############################################################################
+# A standard location for the codecs (PMS docker image)
+CONST_CODECS_01="/config/Library/Application Support/Plex Media Server/Codecs/"
+# A standard location for the codecs (PMS linux package?)
+CONST_CODECS_02="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Codecs/"
 : "${TRANSCODE:="true"}"	# Perform transcode step, otherwise just copy
 : "${COMCHAP:="false"}"		# Create chapter marks for commercials (leaves the 
 							#    commercials in -- non-destructive)
@@ -28,20 +32,28 @@
 							#    remuxed to this format if any operations are 
 							#    performed)
 : "${ONLYMPEG2:="false"}"	# Only transcode mpeg2video sources
-: "${FFMPEGLIBS:=""}"	# User-defined ffmpeg libs folder
+: "${FFMPEGLIBS:=""}"	    # User-defined ffmpeg libs (codecs) folder
+                            # Contains (at any depth) libmpeg2video_decoder.so
+                            # I.e., /<...>/Plex Media Server/Codecs/
+: "${LOGLEVEL:="1"}"        # Logging verbosity
+                            # (0=none, *1=STDOUT msgs, 2=STDOUT+STDERR)
 
 ###############################################################################
 # INITIALIZATION
 ###############################################################################
-CONST_CODECS_01="/config/Library/Application Support/Plex Media Server/Codeqs/"
-CONST_CODECS_02="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Codecs/"
 ulimit -c 0					# Disable core dumps
 FILENAME="${1}"				# %FILE% - Filename of original file
 WORKINGFILE="$(mktemp ${TMPFOLDER}/working.XXXXXXXX.mkv)"
 COMSKIP_CHAPTERS=""
 UNIQUESTRING=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)
-LOGFILE="/tmp/transcode.$(date +"%Y%m%d").log" # Create a unique log file.
-ERRFILE="/tmp/transcode.$(date +"%Y%m%d").err" # Create a unique log file.
+LOGFILE="/dev/null"
+ERRFILE="/dev/null"
+if [ "${LOGLEVEL}" -gt "0" ]; then
+	LOGFILE="/tmp/transcode.$(date +"%Y%m%d").log" # Create a daily log file.
+fi
+if [ "${LOGLEVEL}" -gt "1" ]; then
+	ERRFILE="/tmp/transcode.$(date +"%Y%m%d").err" # Create a daily log file.
+fi
 touch "${LOGFILE}"			# Create the log file
 touch "${ERRFILE}"			# Create the log file
 
@@ -75,12 +87,14 @@ echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : S
 CODECs=""
 if [ -n "$FFMPEGLIBS" ]; then
 	CODECS="$(find "$FFMPEGLIBS" -name "libmpeg2video_decoder.so" -printf "%h\n")"
-	check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found." > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+	check_errs $? "Failed to locate user-defined plex encoder libraries. libmpeg2video_decoder.so not found." \
+		> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 else
 	CODECS="$(find "$CONST_CODECS_01" -name "libmpeg2video_decoder.so" -printf "%h\n")"
 	if [ "$?" -ne "0" ]; then
 		CODECS="$(find "$CONST_CODECS_02" -name "libmpeg2video_decoder.so" -printf "%h\n")"
-		check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found." > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+		check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found." \
+			> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 	fi
 fi
 
@@ -91,7 +105,8 @@ echo "INFO - FFMPEG_EXTERNAL_LIBS: $FFMPEG_EXTERNAL_LIBS" > >(tee -a "${LOGFILE}
 ###############################################################################
 # Remux the source file into our working format
 ###############################################################################
-/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner -i "${FILENAME}" -c:v copy -c:a copy -c:s copy -c:d copy -c:t copy "${WORKINGFILE}" \
+/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner -i "${FILENAME}" \
+	-c:v copy -c:a copy -c:s copy -c:d copy -c:t copy "${WORKINGFILE}" \
 	> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 check_errs $? "Failed to remux ${FILENAME}."
 WORKSIZE=$(stat -c%s "${WORKINGFILE}")

@@ -28,6 +28,8 @@ No environment variables are required for operation. However, some encoding defa
 * `ONLYMPEG2` - Set to 'true' to limit transcoding to 'mpeg2video' source content. (default: 'false')
 * `TRANSCODE` - Set to 'false' to skip the video transcoding step. (default: 'true')
 * `COMCHAP` - Set to 'true' to scan for commercials and add chapters to the video. Does not alter the video. (default: 'false')
+* `FFMPEGLIBS` - Set to a folder that contains (at any depth) the `libmpeg2video_decoder.so` library. If not specified, will try a couple standard locations. (default: '')
+* `LOGLEVEL` - Controls how much of the encoding process is logged. `0`=none, `1`=STDOUT msgs, `2`=STDOUT+STDERR for debugging. Logs are placed in `/tmp`. (default: '1')
 
 ### Usage
 1. Copy to your PMS scripts folder (`/config/Library/Application Support/Plex Media Server/Scripts/`)
