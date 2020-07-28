@@ -17,6 +17,10 @@
 ###############################################################################
 # CONSTANTS
 ###############################################################################
+# A standard location for the codecs (PMS docker image)
+CONST_CODECS_01="/config/Library/Application Support/Plex Media Server/Codecs/"
+# A standard location for the codecs (PMS linux package?)
+CONST_CODECS_02="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Codecs/"
 : "${TRANSCODE:="true"}"	# Perform transcode step, otherwise just copy
 : "${COMCHAP:="false"}"		# Create chapter marks for commercials (leaves the 
 							#    commercials in -- non-destructive)
@@ -28,17 +32,30 @@
 							#    remuxed to this format if any operations are 
 							#    performed)
 : "${ONLYMPEG2:="false"}"	# Only transcode mpeg2video sources
+: "${FFMPEGLIBS:=""}"	    # User-defined ffmpeg libs (codecs) folder
+                            # Contains (at any depth) libmpeg2video_decoder.so
+                            # I.e., /<...>/Plex Media Server/Codecs/
+: "${LOGLEVEL:="1"}"        # Logging verbosity
+                            # (0=none, *1=STDOUT msgs, 2=STDOUT+STDERR)
 
 ###############################################################################
 # INITIALIZATION
 ###############################################################################
 ulimit -c 0					# Disable core dumps
-LOGFILE="/tmp/transcode.$(date +"%Y%m%d").log" # Create a unique log file.
-touch "${LOGFILE}"			# Create the log file
 FILENAME="${1}"				# %FILE% - Filename of original file
 WORKINGFILE="$(mktemp ${TMPFOLDER}/working.XXXXXXXX.mkv)"
 COMSKIP_CHAPTERS=""
 UNIQUESTRING=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)
+LOGFILE="/dev/null"
+ERRFILE="/dev/null"
+if [ "${LOGLEVEL}" -gt "0" ]; then
+	LOGFILE="/tmp/transcode.$(date +"%Y%m%d").log" # Create a daily log file.
+fi
+if [ "${LOGLEVEL}" -gt "1" ]; then
+	ERRFILE="/tmp/transcode.$(date +"%Y%m%d").err" # Create a daily log file.
+fi
+touch "${LOGFILE}"			# Create the log file
+touch "${ERRFILE}"			# Create the log file
 
 ###############################################################################
 # FUNCTION check_errs
@@ -61,19 +78,36 @@ check_errs()
 ###############################################################################
 
 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Starting postprocessing for $FILENAME." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
 
 ###############################################################################
 # ".../Plex <executables>" require some custom FFMPEG libraries
 # Exact path may change wrt release -- discover it
 ###############################################################################
-export FFMPEG_EXTERNAL_LIBS="$(find ~/Library/Application\ Support/Plex\ Media\ Server/Codecs/ -name "libmpeg2video_decoder.so" -printf "%h\n")/"
-check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found."
+CODECs=""
+if [ -n "$FFMPEGLIBS" ]; then
+	CODECS="$(find "$FFMPEGLIBS" -name "libmpeg2video_decoder.so" -printf "%h\n")"
+	check_errs $? "Failed to locate user-defined plex encoder libraries. libmpeg2video_decoder.so not found." \
+		> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+else
+	CODECS="$(find "$CONST_CODECS_01" -name "libmpeg2video_decoder.so" -printf "%h\n")"
+	if [ "$?" -ne "0" ]; then
+		CODECS="$(find "$CONST_CODECS_02" -name "libmpeg2video_decoder.so" -printf "%h\n")"
+		check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found." \
+			> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+	fi
+fi
+
+export FFMPEG_EXTERNAL_LIBS="$CODECS/"
+echo "INFO - FFMPEG_EXTERNAL_LIBS: $FFMPEG_EXTERNAL_LIBS" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+
 
 ###############################################################################
 # Remux the source file into our working format
 ###############################################################################
-/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner -i "${FILENAME}" -c:v copy -c:a copy -c:s copy -c:d copy -c:t copy "${WORKINGFILE}"
+/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner -i "${FILENAME}" \
+	-c:v copy -c:a copy -c:s copy -c:d copy -c:t copy "${WORKINGFILE}" \
+	> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 check_errs $? "Failed to remux ${FILENAME}."
 WORKSIZE=$(stat -c%s "${WORKINGFILE}")
 
@@ -86,24 +120,26 @@ if [[ "${TRANSCODE}" == "true" ]]; then
    ###############################################################################
    DIM="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "${WORKINGFILE}" 2>&1 \
 		| grep "Stream #0:0" \
-		| perl -lane 'print "$1 $2 $3" if /Video: (\w+).*, (\d{3,})x(\d{3,})/')"
+		| perl -lane 'print "$1 $2 $3" if /Video: (\w+).*, (\d{3,})x(\d{3,})/' \
+		 > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2))"
    ISMPEG2=$(echo ${DIM} | perl -lane 'print $F[0] if $F[0] eq "mpeg2video"')
    HEIGHT=$(echo ${DIM} | perl -lane 'print $F[2]')
    WIDTH=$(echo ${DIM} | perl -lane 'print $F[1]')
    FPS="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "${WORKINGFILE}" 2>&1 \
 		| grep "Stream #0:0" \
-		| perl -lane 'print $1 if /, (\d+(.\d+)*) fps/')"
+		| perl -lane 'print $1 if /, (\d+(.\d+)*) fps/' \
+		 > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2))"
    ALLOK="true"
    if [[ -z $ISMPEG2 && "${ONLYMPEG2}" == "true" ]]; then
 		# Input video is not MPEG2 and the env variable is set to only encode MPEG2
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcode skipped. Source video codec is not MPEG2 and ONLYMPEG2 is defined." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		ALLOK="false"
    fi
 
    if [[ -z $WIDTH || -z $HEIGHT || -z $FPS ]]; then
 	 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] ERROR: transcode_internal.sh : Transcode canceled. Unable to determine input video dimensions." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		ALLOK="false"
    fi
    if [[ "${ALLOK}" == "true" ]]; then
@@ -117,7 +153,8 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		DEINT="$(/usr/lib/plexmediaserver/Plex\ Transcoder -i "${WORKINGFILE}" \
 		-filter:v idet -frames:v 1000 -an -f h264 -y /dev/null 2>&1 \
 		| grep "Multi frame detection:" \
-		| perl -lane 'if (/TFF:\s+(\d+)\s+BFF:\s+(\d+)\s+Progressive:\s+(\d+)/){print "-vf yadif=0:0:0" if ($1>$2 && $1>$3);print "-vf yadif=0:1:0" if ($2>$1 && $2>$3);print "" if ($3>$1 && $3>$2);}')"
+		| perl -lane 'if (/TFF:\s+(\d+)\s+BFF:\s+(\d+)\s+Progressive:\s+(\d+)/){print "-vf yadif=0:0:0" if ($1>$2 && $1>$3);print "-vf yadif=0:1:0" if ($2>$1 && $2>$3);print "" if ($3>$1 && $3>$2);}' \
+		 > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2))"
 		HWYADIF="hwupload_cuda,yadif_cuda"
 		DEINT_CUDA="${DEINT/yadif/$HWYADIF}"		
 		###############################################################################
@@ -128,12 +165,12 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		BITMAX="$(echo ${BITRATE} | perl -lane 'print ($F[0]*2)')"
 		BUFFER="$(echo ${BITRATE} | perl -lane 'print ($F[0]*3)')"
 
-		echo "INFO -           Dimensions: ${WIDTH} x ${HEIGHT}"
-		echo "INFO -            Framerate: ${FPS}"
-		echo "INFO -  De-interlace filter: \"${DEINT}\""
-		echo "INFO -   Calculated bitrate: ${BITRATE}"
-		echo "INFO -     Max bitrate (2x): ${BITMAX}"
-		echo "INFO - Encoding buffer (3x): ${BUFFER}"
+		echo "INFO -           Dimensions: ${WIDTH} x ${HEIGHT}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+		echo "INFO -            Framerate: ${FPS}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+		echo "INFO -  De-interlace filter: \"${DEINT}\"" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+		echo "INFO -   Calculated bitrate: ${BITRATE}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+		echo "INFO -     Max bitrate (2x): ${BITMAX}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+		echo "INFO - Encoding buffer (3x): ${BUFFER}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 
 		###############################################################################
 		# Transcode input video into a more efficient format
@@ -143,39 +180,39 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		# File Format: MKV
 		###############################################################################
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Video and audio transcoding starting." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] DEBUG: transcode_internal.sh : $FILENAME;$ISMPEG2;$WIDTH;$HEIGHT;$FPS;$DEINT;$BITRATE;$BITMAX;$BUFFER." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		TEMPFILENAME="$(mktemp ${TMPFOLDER}/transcode.XXXXXXXX.mkv)"  # Temporary File Name for transcoding
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		-hwaccel nvdec -i "${WORKINGFILE}" \
 		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
 		-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT_CUDA} \
 		-c:a aac -ac 2 -b:a ${AACRATE}k -filter:a aresample=matrix_encoding=dplii \
-		"${TEMPFILENAME}"
+		"${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
 		if [[ "${ERRCODE}" -ne "0" ]]; then   
 		# For numerous reasons, NVDEC/NVENC may fail. Try pure SW encoding.
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] WARNING: ${ERRCODE} : transcode_internal.sh : Fail-over to libx264." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		 -i "${WORKINGFILE}" \
 		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
 		 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast -forced-idr:v 1 ${DEINT} \
 		 -c:a aac -ac 2 -b:a ${AACRATE}k -filter:a aresample=matrix_encoding=dplii \
-		 "${TEMPFILENAME}"
+		 "${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
 		if [[ "${ERRCODE}" -ne "0" ]]; then
 			echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] ERROR: ${ERRCODE} : transcode_internal.sh : Transcode failed." \
-			 | tee -a "${LOGFILE}"
+			 | tee -a "${LOGFILE}" "${ERRFILE}"
 			rm -f "${TEMPFILENAME}"
 		else
 			echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcoding complete. ${TEMPFILENAME} created." \
-			 | tee -a "${LOGFILE}"
+			 | tee -a "${LOGFILE}" "${ERRFILE}"
 		fi
 		else
 		 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcoding complete. ${TEMPFILENAME} created." \
-			| tee -a "${LOGFILE}"
+			| tee -a "${LOGFILE}" "${ERRFILE}"
 		fi
 		###############################################################################
 		# Rename temporary MKV file
@@ -206,17 +243,19 @@ if [[ "${COMCHAP}" == "true" ]]; then
    COMSKIP_OUT="${TMPFOLDER}/${COMSKIP_PRE}.commerge.mkv"
    cp "${COMSKIP_ORG}" "${COMSKIP_TMP}"
    echo output_ffmeta=1 >> "${COMSKIP_TMP}"
-   /usr/lib/plexmediaserver/Plex\ Commercial\ Skipper --ini "${COMSKIP_TMP}" --output="${TMPFOLDER}" --output-filename="${COMSKIP_PRE}.comskip" -q "${WORKINGFILE}" "${TMPFOLDER}"
+   /usr/lib/plexmediaserver/Plex\ Commercial\ Skipper --ini "${COMSKIP_TMP}" --output="${TMPFOLDER}" \
+		--output-filename="${COMSKIP_PRE}.comskip" -q "${WORKINGFILE}" "${TMPFOLDER}" \
+		> >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
    COMSKIP_ERR=$?
    if [[ "${COMSKIP_ERR}" -ne "0" ]]; then   
 		# For numerous reasons, comskip may fail.
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] WARN: ${COMSKIP_ERR} : transcode_internal.sh : Comskip failed to generate chapters." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
    elif [[ -f "${TMPFOLDER}/${COMSKIP_PRE}.comskip.ffmeta" ]]; then
 	 COMSKIP_CHAPTERS="${TMPFOLDER}/${COMSKIP_PRE}.comskip.ffmeta"
    else   
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] WARN: ${COMSKIP_ERR} : transcode_internal.sh : Comskip output was empty." \
-		 | tee -a "${LOGFILE}"
+		 | tee -a "${LOGFILE}" "${ERRFILE}"
    fi
 fi
 
@@ -236,7 +275,7 @@ if [[ "${COMSKIP_CHAPTERS}" != "" || "$(stat -c%s "${WORKINGFILE}")" -ne "${WORK
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		   -i "$WORKINGFILE" -i "$COMSKIP_CHAPTERS" \
 		 -c:v copy -c:a copy -c:s copy -c:d copy -c:t copy \
-		   "$TEMPFILENAME"
+		   "$TEMPFILENAME"  > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
    else
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Remuxing $WORKINGFILE into $TEMPFILENAME." \
 		 | tee -a "${LOGFILE}"
@@ -245,7 +284,7 @@ if [[ "${COMSKIP_CHAPTERS}" != "" || "$(stat -c%s "${WORKINGFILE}")" -ne "${WORK
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		   -i "$WORKINGFILE" \
 		 -c:v copy -c:a copy -c:s copy -c:d copy -c:t copy \
-		   "$TEMPFILENAME"
+		   "$TEMPFILENAME"  > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
    fi
    ERRCODE=$?
    if [[ "${ERRCODE}" -ne "0" ]]; then
