@@ -80,3 +80,7 @@ The **BITRATE_CONSTANT** can be overidden by setting the `PPSRATE` environment v
 If only I could. There exists two main reasons *constant quality* encoding is not used:
 1. CQP results in an unpredictable file size. It all depends on what is in the video (Rambo movies, slideshows, or golf -- in order of decreasing action). Getting reliably-small files can only be achieved by using scarily-large CQP values.
 2. The implementation of NVENC used in Plex's FFMPEG seems very determined to target a 2000 Kbps average bitrate regardless of the constant quality value specified. NVENC really needs its bitrates specified.
+
+### Transcoding Speed Comparison
+
+![Bar Chart](img/transcode_bars.svg)
