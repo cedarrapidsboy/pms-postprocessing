@@ -84,17 +84,21 @@ If only I could. There exists two main reasons *constant quality* encoding is no
 
 ### Transcoding Speed Comparison
 
-While your actual results will vary, in general the speed of your transcodes depends on how fast your disks, cpu, memory, and nvidia hardware is. You can also tailor this script (via the environment variables) to skip some steps to increase transcode speed:
+<<<<<<< HEAD
+While your actual results will vary, in general the speed of your transcodes depends on how fast your disks, cpu, memory, and nvidia hardware are. You can also tailor this script (via the environment variables) to skip some steps to increase transcode speed:
 
 * Process files on a fast disk: `TMPFOLDER="/my/ssd/drive"`. This script creates a remuxed MKV temp file and otherwise does a lot of disk IO.
-* Disable commercial scanning: `COMCHAP="false"`. Commercial scanning will not use nvidoa hardware so must run in software, on your CPU.
+* Disable commercial scanning: `COMCHAP="false"`. Commercial scanning will not use nvidia hardware so must run in software, on your CPU.
 * Disable audio transcoding: `COPYAUDIO="false"`. Converting audio to AAC must run in software on your CPU. For some video sizes, this causes the GPU (NVENC) to wait for audio processing.
 
-The following chart compares transcoding times between NVENC and x264 as well as between AAC conversion and direct AC3 stream copies (e.g., no audio conversion).
+The following chart compares transcoding times between NVENC and x264 as well as between AAC conversion and direct AC3 stream copies (i.e., no audio conversion).
 
-CPU: Intel i7 930 (4 x 2.8 GHz)
-GPU: NVIDIA GTX 970
+* CPU: Intel i7 930 (4 x 2.8 GHz)
+* GPU: NVIDIA GTX 970
 
 ![Bar Chart](img/transcode_bars.svg)
 
 The GPU can really tear through 480i content when it doesn't have to wait on AAC conversion. However, at higher resolutions, while GPU is faster than CPU the AAC conversion makes less of a impact.
+=======
+![Bar Chart](img/transcode_bars.svg)
+>>>>>>> 22d671ba34fa9f6764173f8a7b771f5134bbd99b
