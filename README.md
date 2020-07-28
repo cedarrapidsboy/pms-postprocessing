@@ -30,6 +30,7 @@ No environment variables are required for operation. However, some encoding defa
 * `COMCHAP` - Set to 'true' to scan for commercials and add chapters to the video. Does not alter the video. (default: 'false')
 * `FFMPEGLIBS` - Set to a folder that contains (at any depth) the `libmpeg2video_decoder.so` library. If not specified, will try a couple standard locations. (default: '')
 * `LOGLEVEL` - Controls how much of the encoding process is logged. `0`=none, `1`=STDOUT msgs, `2`=STDOUT+STDERR for debugging. Logs are placed in `/tmp`. (default: '1')
+* `COPYAUDIO` - Allows the original audio to be copied from the source instead of converted to AAC. (default: 'false')
 
 ### Usage
 1. Copy to your PMS scripts folder (`/config/Library/Application Support/Plex Media Server/Scripts/`)
@@ -80,3 +81,20 @@ The **BITRATE_CONSTANT** can be overidden by setting the `PPSRATE` environment v
 If only I could. There exists two main reasons *constant quality* encoding is not used:
 1. CQP results in an unpredictable file size. It all depends on what is in the video (Rambo movies, slideshows, or golf -- in order of decreasing action). Getting reliably-small files can only be achieved by using scarily-large CQP values.
 2. The implementation of NVENC used in Plex's FFMPEG seems very determined to target a 2000 Kbps average bitrate regardless of the constant quality value specified. NVENC really needs its bitrates specified.
+
+### Transcoding Speed Comparison
+
+While your actual results will vary, in general the speed of your transcodes depends on how fast your disks, cpu, memory, and nvidia hardware is. You can also tailor this script (via the environment variables) to skip some steps to increase transcode speed:
+
+* Process files on a fast disk: `TMPFOLDER="/my/ssd/drive"`. This script creates a remuxed MKV temp file and otherwise does a lot of disk IO.
+* Disable commercial scanning: `COMCHAP="false"`. Commercial scanning will not use nvidoa hardware so must run in software, on your CPU.
+* Disable audio transcoding: `COPYAUDIO="false"`. Converting audio to AAC must run in software on your CPU. For some video sizes, this causes the GPU (NVENC) to wait for audio processing.
+
+The following chart compares transcoding times between NVENC and x264 as well as between AAC conversion and direct AC3 stream copies (e.g., no audio conversion).
+
+CPU: Intel i7 930 (4 x 2.8 GHz)
+GPU: NVIDIA GTX 970
+
+![Bar Chart](img/transcode_bars.svg)
+
+The GPU can really tear through 480i content when it doesn't have to wait on AAC conversion. However, at higher resolutions, while GPU is faster than CPU the AAC conversion makes less of a impact.
