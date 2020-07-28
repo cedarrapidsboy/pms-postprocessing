@@ -28,10 +28,13 @@
 							#    remuxed to this format if any operations are 
 							#    performed)
 : "${ONLYMPEG2:="false"}"	# Only transcode mpeg2video sources
+: "${FFMPEGLIBS:=""}"	# User-defined ffmpeg libs folder
 
 ###############################################################################
 # INITIALIZATION
 ###############################################################################
+CONST_CODECS_01="/config/Library/Application Support/Plex Media Server/Codeqs/"
+CONST_CODECS_02="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Codecs/"
 ulimit -c 0					# Disable core dumps
 FILENAME="${1}"				# %FILE% - Filename of original file
 WORKINGFILE="$(mktemp ${TMPFOLDER}/working.XXXXXXXX.mkv)"
@@ -69,8 +72,21 @@ echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : S
 # ".../Plex <executables>" require some custom FFMPEG libraries
 # Exact path may change wrt release -- discover it
 ###############################################################################
-export FFMPEG_EXTERNAL_LIBS="$(find ~/Library/Application\ Support/Plex\ Media\ Server/Codecs/ -name "libmpeg2video_decoder.so" -printf "%h\n")/"
-check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found."
+CODECs=""
+if [ -n "$FFMPEGLIBS" ]; then
+	CODECS="$(find "$FFMPEGLIBS" -name "libmpeg2video_decoder.so" -printf "%h\n")"
+	check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found." > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+else
+	CODECS="$(find "$CONST_CODECS_01" -name "libmpeg2video_decoder.so" -printf "%h\n")"
+	if [ "$?" -ne "0" ]; then
+		CODECS="$(find "$CONST_CODECS_02" -name "libmpeg2video_decoder.so" -printf "%h\n")"
+		check_errs $? "Failed to locate plex encoder libraries. libmpeg2video_decoder.so not found." > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+	fi
+fi
+
+export FFMPEG_EXTERNAL_LIBS="$CODECS/"
+echo "INFO - FFMPEG_EXTERNAL_LIBS: $FFMPEG_EXTERNAL_LIBS" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+
 
 ###############################################################################
 # Remux the source file into our working format
