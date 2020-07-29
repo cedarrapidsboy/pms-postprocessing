@@ -98,5 +98,3 @@ The following chart compares transcoding times between NVENC and x264 as well as
 ![Bar Chart](img/transcode_bars.svg)
 
 The GPU can really tear through 480i content when it doesn't have to wait on AAC conversion. However, at higher resolutions, while GPU is faster than CPU the AAC conversion makes less of a impact.
-=======
-![Bar Chart](img/transcode_bars.svg)
