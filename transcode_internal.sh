@@ -22,6 +22,8 @@ CONST_CODECS_01="/config/Library/Application Support/Plex Media Server/Codecs/"
 # A standard location for the codecs (PMS linux package?)
 CONST_CODECS_02="/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Codecs/"
 : "${TRANSCODE:="true"}"	# Perform transcode step, otherwise just copy
+: "${COPYAUDIO:="false"}"	# Simply copy audio track, otherwise transcode
+							#    audio to AAC
 : "${COMCHAP:="false"}"		# Create chapter marks for commercials (leaves the 
 							#    commercials in -- non-destructive)
 : "${AACRATE:="192"}"		# Kb/s for AAC audio (stereo DPLII downmix)
@@ -33,10 +35,10 @@ CONST_CODECS_02="/var/lib/plexmediaserver/Library/Application Support/Plex Media
 							#    performed)
 : "${ONLYMPEG2:="false"}"	# Only transcode mpeg2video sources
 : "${FFMPEGLIBS:=""}"	    # User-defined ffmpeg libs (codecs) folder
-                            # Contains (at any depth) libmpeg2video_decoder.so
-                            # I.e., /<...>/Plex Media Server/Codecs/
+                            #    Contains (at any depth) libmpeg2video_decoder.so
+                            #    I.e., /<...>/Plex Media Server/Codecs/
 : "${LOGLEVEL:="1"}"        # Logging verbosity
-                            # (0=none, *1=STDOUT msgs, 2=STDOUT+STDERR)
+                            #    (0=none, *1=STDOUT msgs, 2=STDOUT+STDERR)
 
 ###############################################################################
 # INITIALIZATION
@@ -56,6 +58,10 @@ if [ "${LOGLEVEL}" -gt "1" ]; then
 fi
 touch "${LOGFILE}"			# Create the log file
 touch "${ERRFILE}"			# Create the log file
+AUDIOPARMS="-c:a aac -ac 2 -b:a ${AACRATE}k -filter:a aresample=matrix_encoding=dplii"
+if [ "${COPYAUDIO}" == "true" ]; then
+	AUDIOPARMS="-c:a copy"
+fi
 
 ###############################################################################
 # FUNCTION check_errs
@@ -188,7 +194,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		-hwaccel nvdec -i "${WORKINGFILE}" \
 		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
 		-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT_CUDA} \
-		-c:a aac -ac 2 -b:a ${AACRATE}k -filter:a aresample=matrix_encoding=dplii \
+		${AUDIOPARMS} \
 		"${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
 		if [[ "${ERRCODE}" -ne "0" ]]; then   
@@ -199,7 +205,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		 -i "${WORKINGFILE}" \
 		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
 		 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast -forced-idr:v 1 ${DEINT} \
-		 -c:a aac -ac 2 -b:a ${AACRATE}k -filter:a aresample=matrix_encoding=dplii \
+		 ${AUDIOPARMS} \
 		 "${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
 		if [[ "${ERRCODE}" -ne "0" ]]; then
