@@ -84,7 +84,6 @@ If only I could. There exists two main reasons *constant quality* encoding is no
 
 ### Transcoding Speed Comparison
 
-<<<<<<< HEAD
 While your actual results will vary, in general the speed of your transcodes depends on how fast your disks, cpu, memory, and nvidia hardware are. You can also tailor this script (via the environment variables) to skip some steps to increase transcode speed:
 
 * Process files on a fast disk: `TMPFOLDER="/my/ssd/drive"`. This script creates a remuxed MKV temp file and otherwise does a lot of disk IO.
@@ -101,4 +100,3 @@ The following chart compares transcoding times between NVENC and x264 as well as
 The GPU can really tear through 480i content when it doesn't have to wait on AAC conversion. However, at higher resolutions, while GPU is faster than CPU the AAC conversion makes less of a impact.
 =======
 ![Bar Chart](img/transcode_bars.svg)
->>>>>>> 22d671ba34fa9f6764173f8a7b771f5134bbd99b
