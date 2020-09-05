@@ -185,6 +185,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		# Audio Codec: AAC (stereo DPLII downmix)
 		# File Format: MKV
 		###############################################################################
+		ERRCODE=0
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Video and audio transcoding starting." \
 		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] DEBUG: transcode_internal.sh : $FILENAME;$ISMPEG2;$WIDTH;$HEIGHT;$FPS;$DEINT;$BITRATE;$BITMAX;$BUFFER." \
@@ -197,28 +198,38 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		${AUDIOPARMS} \
 		"${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
-		if [[ "${ERRCODE}" -ne "0" ]]; then   
-		# For numerous reasons, NVDEC/NVENC may fail. Try pure SW encoding.
-		echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] WARNING: ${ERRCODE} : transcode_internal.sh : Fail-over to libx264." \
-		 | tee -a "${LOGFILE}" "${ERRFILE}"
-		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
-		 -i "${WORKINGFILE}" \
-		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
-		 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast -forced-idr:v 1 ${DEINT} \
-		 ${AUDIOPARMS} \
-		 "${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
-		ERRCODE=$?
 		if [[ "${ERRCODE}" -ne "0" ]]; then
-			echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] ERROR: ${ERRCODE} : transcode_internal.sh : Transcode failed." \
-			 | tee -a "${LOGFILE}" "${ERRFILE}"
-			rm -f "${TEMPFILENAME}"
-		else
-			echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcoding complete. ${TEMPFILENAME} created." \
-			 | tee -a "${LOGFILE}" "${ERRFILE}"
+			# For numerous reasons, NVDEC/NVENC may fail. Try QSV (Intel) encoding.
+			/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
+			-hwaccel vaapi -i "${WORKINGFILE}" \
+			-c:v h264_vaapi -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
+			-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT} \
+			${AUDIOPARMS} \
+			"${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+			ERRCODE=$?
 		fi
-		else
-		 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcoding complete. ${TEMPFILENAME} created." \
-			| tee -a "${LOGFILE}" "${ERRFILE}"
+		if [[ "${ERRCODE}" -ne "0" ]]; then   
+			# For numerous reasons, NVDEC/NVENC/QSV may fail. Try pure SW encoding.
+			echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] WARNING: ${ERRCODE} : transcode_internal.sh : Fail-over to libx264." \
+			 | tee -a "${LOGFILE}" "${ERRFILE}"
+			/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
+			 -i "${WORKINGFILE}" \
+			 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
+			 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast -forced-idr:v 1 ${DEINT} \
+			 ${AUDIOPARMS} \
+			 "${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
+			ERRCODE=$?
+			if [[ "${ERRCODE}" -ne "0" ]]; then
+				echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] ERROR: ${ERRCODE} : transcode_internal.sh : Transcode failed." \
+				 | tee -a "${LOGFILE}" "${ERRFILE}"
+				rm -f "${TEMPFILENAME}"
+			else
+				echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcoding complete. ${TEMPFILENAME} created." \
+				 | tee -a "${LOGFILE}" "${ERRFILE}"
+			fi
+			else
+			 echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : Transcoding complete. ${TEMPFILENAME} created." \
+				| tee -a "${LOGFILE}" "${ERRFILE}"
 		fi
 		###############################################################################
 		# Rename temporary MKV file
