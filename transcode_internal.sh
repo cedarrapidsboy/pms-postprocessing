@@ -192,8 +192,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		TEMPFILENAME="$(mktemp ${TMPFOLDER}/transcode.XXXXXXXX.mkv)"  # Temporary File Name for transcoding
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		-hwaccel nvdec -i "${WORKINGFILE}" \
-		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
-		-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT_CUDA} \
+		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k ${DEINT_CUDA} \
 		${AUDIOPARMS} \
 		"${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
@@ -203,8 +202,8 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		 -i "${WORKINGFILE}" \
-		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
-		 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast -forced-idr:v 1 ${DEINT} \
+		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v main \
+		 -level:v 4.1 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast ${DEINT} \
 		 ${AUDIOPARMS} \
 		 "${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
