@@ -90,7 +90,7 @@ echo "$(date +"%Y%m%d-%H%M%S") [${UNIQUESTRING}] INFO: transcode_internal.sh : S
 # ".../Plex <executables>" require some custom FFMPEG libraries
 # Exact path may change wrt release -- discover it
 ###############################################################################
-CODECs=""
+CODECS=""
 if [ -n "$FFMPEGLIBS" ]; then
 	CODECS="$(find "$FFMPEGLIBS" -name "libmpeg2video_decoder.so" -printf "%h\n")"
 	check_errs $? "Failed to locate user-defined plex encoder libraries. libmpeg2video_decoder.so not found." \
@@ -192,8 +192,7 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		TEMPFILENAME="$(mktemp ${TMPFOLDER}/transcode.XXXXXXXX.mkv)"  # Temporary File Name for transcoding
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		-hwaccel nvdec -i "${WORKINGFILE}" \
-		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
-		-bf:v 3 -bufsize:v ${BUFFER}k -preset:v hq -forced-idr:v 1 ${DEINT_CUDA} \
+		-c:v h264_nvenc -b:v ${BITRATE}k -maxrate:v ${BITMAX}k ${DEINT_CUDA} \
 		${AUDIOPARMS} \
 		"${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
@@ -203,8 +202,8 @@ if [[ "${TRANSCODE}" == "true" ]]; then
 		 | tee -a "${LOGFILE}" "${ERRFILE}"
 		/usr/lib/plexmediaserver/Plex\ Transcoder -y -hide_banner \
 		 -i "${WORKINGFILE}" \
-		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v high \
-		 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast -forced-idr:v 1 ${DEINT} \
+		 -c:v libx264 -b:v ${BITRATE}k -maxrate:v ${BITMAX}k -profile:v main \
+		 -level:v 4.1 -bf:v 3 -bufsize:v ${BUFFER}k -preset:v veryfast ${DEINT} \
 		 ${AUDIOPARMS} \
 		 "${TEMPFILENAME}" > >(tee -a "${LOGFILE}") 2> >(tee -a "${ERRFILE}" >&2)
 		ERRCODE=$?
