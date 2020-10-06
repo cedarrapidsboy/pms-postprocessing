@@ -101,7 +101,9 @@ The GPU can really tear through 480i content when it doesn't have to wait on AAC
 
 ### MPEG2 (source), x264, NVENC (h.264) Comparison
 
-Encoding with NVENC can be convenient for its filesize and speed, but may not be desirable for its image quality. More recent NVENC implemenatations (like in the RTX line of cards) may improve quality over previous implementations (GTX), however it is generally understood that software encoding (x264) yields the best quality results (per bit).
+Encoding with NVENC can be convenient for its filesize and speed, but may not be desirable for its image quality. More recent NVENC implemenatations (like in the RTX line of cards) may improve quality over previous implementations (GTX), however it is generally understood that software encoding (x264) yields the better quality results (per bit).
+
+*NOTE:* In the context of this script, MPEG2 reppresents the reference video quality. It is the best possible video quality and is what x264 and NVENC results should be compared against.
 
 Roughly speaking, when deciding which encoder to use, you can choose 2 of the following:
 
@@ -111,7 +113,7 @@ Roughly speaking, when deciding which encoder to use, you can choose 2 of the fo
 
 | Encoder | Speed | Quality | File Size | Notes |
 | --- | --- | --- | --- | --- |
-| MPEG2 (no encoding) | X | X | | This is the source material. No re-encodong. |
+| MPEG2 (no encoding) | X | X | | This is the source material. No re-encodong. Best (original) quality. |
 | x264 (CPU encoding) | | X | X | Software encoding using the CPU. |
 | NVENC (GPU encoding) | X | | X | NVIDIA h.264 encoding using the GPU. |
 
