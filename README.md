@@ -98,3 +98,21 @@ The following chart compares transcoding times between NVENC and x264 as well as
 ![Bar Chart](img/transcode_bars.svg)
 
 The GPU can really tear through 480i content when it doesn't have to wait on AAC conversion. However, at higher resolutions, while GPU is faster than CPU the AAC conversion makes less of a impact.
+
+### MPEG2 (source), x264, NVENC (h.264) Comparison
+
+Encoding with NVENC can be convenient for its filesize and speed, but may not be desirable for its image quality. More recent NVENC implemenatations (like in the RTX line of cards) may improve quality over previous implementations (GTX), however it is generally understood that software encoding (x264) yields the best quality results (per bit).
+
+Roughly speaking, when deciding which encoder to use, you can choose 2 of the following:
+
+* Speed
+* Quality
+* Filesize
+
+| Encoder | Speed | Quality | File Size | Notes |
+| --- | --- | --- | --- | --- |
+| MPEG2 (no encoding) | X | X | | This is the source material. No re-encodong. |
+| x264 (CPU encoding) | | X | X | Software encoding using the CPU. |
+| NVENC (GPU encoding) | X | | X | NVIDIA h.264 encoding using the GPU. |
+
+This script uses NVENC if it finds properly configured NVIDIA drivers. Otherwise, it will fallback to x264.
